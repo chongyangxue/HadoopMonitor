@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:aop="http://www.springframework.org/schema/aop"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:jdbc="http://www.springframework.org/schema/jdbc" xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:util="http://www.springframework.org/schema/util"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+		http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-3.0.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-3.0.xsd
+		http://www.springframework.org/schema/jdbc http://www.springframework.org/schema/jdbc/spring-jdbc-3.0.xsd
+		http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-3.0.xsd
+		http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util-3.0.xsd">
+
+<!-- 	<context:property-placeholder location="classpath*:jdbc.properties" /> -->
+	<bean id="propertyConfigurer" class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+		<property name="locations">
+			<list>
+				<value>classpath*:jdbc.properties</value>
+				<value>classpath*:hadoop.properties</value>
+			</list>
+		</property>
+	</bean>
+
+	<!-- c3p0 data source -->
+	<bean id="dataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource"
+		destroy-method="close">
+		<property name="driverClass" value="${jdbc.driver}" />
+		<property name="jdbcUrl" value="${jdbc.url}" />
+		<property name="user" value="${jdbc.username}" />
+		<property name="password" value="${jdbc.password}" />
+		<property name="initialPoolSize" value="10" />
+		<property name="minPoolSize" value="5" />
+		<property name="maxPoolSize" value="30" />
+		<property name="acquireIncrement" value="10" />
+		<property name="maxIdleTime" value="10" />
+		<property name="maxStatements" value="0" />
+		<property name="testConnectionOnCheckout" value="true"/>
+		<property name="idleConnectionTestPeriod" value="18000"/>
+		<property name="preferredTestQuery" value="select 1"/>
+	</bean>
+
+	<bean id="sessionFactory"
+		class="org.springframework.orm.hibernate3.annotation.AnnotationSessionFactoryBean">
+		<property name="dataSource" ref="dataSource" />
+		<property name="packagesToScan">
+			<list>
+				<value>com.hadoopmonitor.model</value>
+			</list>
+		</property>
+		<property name="hibernateProperties">
+			<value>
+				hibernate.dialect=org.hibernate.dialect.MySQLDialect
+				hibernate.format_sql=true
+				hibernate.show_sql=true
+				hibernate.temp.use_jdbc_metadata_defaults=false
+				hibernate.connection.autocommit=false
+			</value>
+		</property>
+	</bean>
+
+	<bean id="transactionManager"
+		class="org.springframework.orm.hibernate3.HibernateTransactionManager">
+		<property name="sessionFactory" ref="sessionFactory" />
+	</bean>
+	
+	<bean id="jobClientLoader" class="com.hadoopmonitor.service.JobClientLoader">
+		<property name="masterAddress" value="${hadoop.master}"/>
+		<property name="user" value="${hadoop.user}"/>
+		<property name="keytab" value="${hadoop.keytab}"/>
+	</bean>
+
+	<context:component-scan base-package="com.hadoopmonitor" />
+	<context:annotation-config />
+	<tx:annotation-driven transaction-manager="transactionManager" proxy-target-class="true" />
+	<!-- 支持 @AspectJ 标记 <aop:aspectj-autoproxy proxy-target-class="true"/> -->
+	<!-- 以AspectJ方式 定义 AOP <aop:config proxy-target-class="true"></aop:config> -->
+</beans>
